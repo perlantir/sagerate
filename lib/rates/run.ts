@@ -7,16 +7,19 @@ import type { RateScrapeMethod, RateScrapeTrigger, RateSourceRecord, RunMortgage
 const DEFAULT_DELAY_MS = 1500;
 
 export async function runMortgageRateScrape(options: RunMortgageRateScrapeOptions = {}): Promise<RunMortgageRateScrapeResult> {
-  const mode = options.mode ?? getConfiguredMode();
+  const modeOverride = options.mode ?? getConfiguredModeOverride();
+  const mode = modeOverride ?? "fetch_html";
   const trigger = options.trigger ?? "manual";
-  const sources = (await ensureDefaultRateSources()).slice(0, options.sourceLimit);
+  const sources = (await ensureDefaultRateSources())
+    .filter((source) => (options.programType ? source.programType === options.programType : true))
+    .slice(0, options.sourceLimit);
   const run = options.dryRun ? null : await createRateScrapeRun({ trigger, mode, totalSources: sources.length });
   let successfulSources = 0;
   let failedSources = 0;
   let snapshotsWritten = 0;
 
   for (const source of sources) {
-    const outcome = await scrapeSource(source, mode);
+    const outcome = await scrapeSource(source, modeOverride);
     if (outcome.status === "success") successfulSources += 1;
     else failedSources += 1;
 
@@ -55,7 +58,7 @@ export async function runMortgageRateScrape(options: RunMortgageRateScrapeOption
       runId: run?.id,
       successfulSources,
       failedSources,
-      notes: `Completed ${mode} scrape for ${sources.length} source(s).`,
+      notes: `Completed ${modeOverride ?? "source-configured"} scrape for ${sources.length} source(s).`,
     });
   }
 
@@ -78,13 +81,15 @@ export async function runMortgageRateScrapeAndClose(options: RunMortgageRateScra
   }
 }
 
-async function scrapeSource(source: RateSourceRecord, mode: RateScrapeMethod) {
-  const method = mode ?? source.scrapeMethod;
+async function scrapeSource(source: RateSourceRecord, modeOverride?: RateScrapeMethod) {
+  const method = modeOverride ?? source.scrapeMethod;
   return method === "browser" ? scrapeRateSourceWithBrowser(source) : scrapeRateSourceWithFetch(source);
 }
 
-function getConfiguredMode(): RateScrapeMethod {
-  return process.env.RATE_SCRAPER_MODE === "browser" ? "browser" : "fetch_html";
+function getConfiguredModeOverride(): RateScrapeMethod | undefined {
+  if (process.env.RATE_SCRAPER_MODE === "browser") return "browser";
+  if (process.env.RATE_SCRAPER_MODE === "fetch_html") return "fetch_html";
+  return undefined;
 }
 
 function getDelayMs() {

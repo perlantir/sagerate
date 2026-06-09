@@ -45,6 +45,7 @@ export type RateScrapeOutcome = {
 export type RunMortgageRateScrapeOptions = {
   trigger?: RateScrapeTrigger;
   mode?: RateScrapeMethod;
+  programType?: LoanProgramType;
   sourceLimit?: number;
   dryRun?: boolean;
 };

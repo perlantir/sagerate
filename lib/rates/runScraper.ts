@@ -1,6 +1,7 @@
 import { config } from "dotenv";
 import { runMortgageRateScrapeAndClose } from "@/lib/rates/run";
 import type { RateScrapeMethod, RateScrapeTrigger } from "@/lib/rates/types";
+import type { LoanProgramType } from "@/lib/types";
 
 config({ path: ".env.local" });
 config();
@@ -15,6 +16,7 @@ const args = new Map(
 runMortgageRateScrapeAndClose({
   mode: parseMode(args.get("mode")),
   trigger: parseTrigger(args.get("trigger")),
+  programType: parseProgramType(args.get("program-type")),
   sourceLimit: parsePositiveInt(args.get("limit")),
   dryRun: args.get("dry-run") === "true",
 })
@@ -33,6 +35,11 @@ function parseMode(value: string | undefined): RateScrapeMethod | undefined {
 
 function parseTrigger(value: string | undefined): RateScrapeTrigger | undefined {
   if (value === "manual" || value === "schedule_10am" || value === "schedule_3pm") return value;
+  return undefined;
+}
+
+function parseProgramType(value: string | undefined): LoanProgramType | undefined {
+  if (value === "professional" || value === "physician_doctor") return value;
   return undefined;
 }
 

@@ -4,6 +4,7 @@ import type { RateSourceSeed } from "@/lib/rates/types";
 type SourceOverride = Pick<RateSourceSeed, "sourceUrl" | "scrapeMethod" | "notes"> & {
   sourceKind: "professional_program" | "doctor_program" | "generic_lender_rates" | "program_details";
   expectedLoanProduct?: string;
+  programEvidenceKeywords?: string[];
 };
 
 const PUBLIC_SOURCE_OVERRIDES: Record<string, SourceOverride> = {
@@ -12,6 +13,7 @@ const PUBLIC_SOURCE_OVERRIDES: Record<string, SourceOverride> = {
     scrapeMethod: "fetch_html",
     sourceKind: "doctor_program",
     expectedLoanProduct: "Physician loan",
+    programEvidenceKeywords: ["physician", "doctor", "dentist", "veterinarian"],
     notes: "Official physician loan program page. Public page describes program terms; exact live rates may not be published.",
   },
   "keybank-professional": {
@@ -19,6 +21,7 @@ const PUBLIC_SOURCE_OVERRIDES: Record<string, SourceOverride> = {
     scrapeMethod: "fetch_html",
     sourceKind: "professional_program",
     expectedLoanProduct: "Medical Professional Loans",
+    programEvidenceKeywords: ["medical professional", "doctor", "dentist", "managing physician", "clinical professor"],
     notes: "Official professional mortgage page. Public page describes program terms; exact live rates may not be published.",
   },
   "truist-doctor-loan": {
@@ -57,17 +60,19 @@ const PUBLIC_SOURCE_OVERRIDES: Record<string, SourceOverride> = {
     notes: "Official PNC specialized loan rates page with Medical Professional mortgage content.",
   },
   "flagstar-professional": {
-    sourceUrl: "https://www.flagstar.com/personal/borrow/home-loans/mortgage-rates.html",
-    scrapeMethod: "fetch_html",
-    sourceKind: "generic_lender_rates",
-    expectedLoanProduct: "30 year fixed",
-    notes: "Official Flagstar mortgage rates page. Professional loan program page exists separately; rates may be generic mortgage pricing.",
+    sourceUrl: "https://www.flagstar.com/personal/borrow/home-loans/professional-loans.html",
+    scrapeMethod: "browser",
+    sourceKind: "professional_program",
+    expectedLoanProduct: "Professional Mortgage",
+    programEvidenceKeywords: ["professional mortgage", "professional home loan", "attorneys", "CPAs", "ATP pilot", "registered nurse", "veterinarian"],
+    notes: "Official Flagstar professional mortgage page. It lists the professional eligibility set; numeric rates must appear on this program page to be comparable.",
   },
   "bmo-medical": {
     sourceUrl: "https://www.bmo.com/en-us/main/personal/mortgages/housecall/",
     scrapeMethod: "fetch_html",
     sourceKind: "doctor_program",
     expectedLoanProduct: "Physicians' Mortgage Program",
+    programEvidenceKeywords: ["physician", "doctor", "dentist", "housecall"],
     notes: "Official BMO physician mortgage page. Public page describes program terms and discounts; exact live rates may not be published.",
   },
   "northwest-bank-physician": {
@@ -75,6 +80,7 @@ const PUBLIC_SOURCE_OVERRIDES: Record<string, SourceOverride> = {
     scrapeMethod: "fetch_html",
     sourceKind: "doctor_program",
     expectedLoanProduct: "Physician",
+    programEvidenceKeywords: ["physician", "doctor", "medical professional", "physician mortgage"],
     notes: "Official Northwest home lending page with physician program details and rate information section.",
   },
   "old-national-medical": {
@@ -82,6 +88,7 @@ const PUBLIC_SOURCE_OVERRIDES: Record<string, SourceOverride> = {
     scrapeMethod: "fetch_html",
     sourceKind: "professional_program",
     expectedLoanProduct: "Professional Mortgage",
+    programEvidenceKeywords: ["professional mortgage", "physician", "dentist", "professor"],
     notes: "Official Old National professional mortgage page. Exact live rates may not be published.",
   },
   "arvest-physician": {
@@ -89,6 +96,7 @@ const PUBLIC_SOURCE_OVERRIDES: Record<string, SourceOverride> = {
     scrapeMethod: "fetch_html",
     sourceKind: "doctor_program",
     expectedLoanProduct: "Physician Loan",
+    programEvidenceKeywords: ["physician", "doctor", "medical professional", "physician loan"],
     notes: "Official Arvest non-conforming mortgage programs page with physician loan details. Exact live rates may not be published.",
   },
 };
@@ -104,6 +112,7 @@ export const DEFAULT_RATE_SOURCES: RateSourceSeed[] = LENDER_PROGRAMS.map((progr
     includeKeywords: buildKeywords(program.lenderName, program.programName),
     expectedLoanProduct: PUBLIC_SOURCE_OVERRIDES[program.id]?.expectedLoanProduct ?? program.programName,
     sourceKind: PUBLIC_SOURCE_OVERRIDES[program.id]?.sourceKind ?? "program_details",
+    programEvidenceKeywords: PUBLIC_SOURCE_OVERRIDES[program.id]?.programEvidenceKeywords,
   },
   notes: PUBLIC_SOURCE_OVERRIDES[program.id]?.notes ?? "Initial public source seed. Replace sourceUrl with the lender's exact public professional/doctor mortgage rate page when available.",
 }));

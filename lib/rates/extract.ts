@@ -9,6 +9,7 @@ export function extractRateOutcomeFromHtml(html: string, source: RateSourceRecor
 
 export function extractRateOutcomeFromText(text: string, source: RateSourceRecord): RateScrapeOutcome {
   const normalized = normalizeWhitespace(text);
+  const sourceKind = getSourceKind(source);
   if (isBlockedText(normalized)) {
     return {
       status: "blocked",
@@ -18,13 +19,20 @@ export function extractRateOutcomeFromText(text: string, source: RateSourceRecor
     };
   }
 
-  const quotes = dedupeQuotes([...buildSentenceRateQuotes(normalized, source), ...buildStructuredQuotes(normalized, source), buildBestQuote(normalized, source)].filter(Boolean) as ExtractedRateQuote[]);
+  const rawQuotes = dedupeQuotes([...buildSentenceRateQuotes(normalized, source), ...buildStructuredQuotes(normalized, source), buildBestQuote(normalized, source)].filter(Boolean) as ExtractedRateQuote[]);
+  const quotes = filterProgramSpecificQuotes(rawQuotes, source, normalized);
   if (!quotes.length) {
     return {
       status: "no_rate_found",
       quotes: [],
       rawText: normalized.slice(0, 5000),
-      metadata: { reason: "No mortgage rate-like percentages were found near relevant keywords." },
+      metadata: {
+        reason: rawQuotes.length && requiresProgramSpecificEvidence(sourceKind)
+          ? "Rates were found, but none were tied to the requested professional or physician/doctor program."
+          : "No mortgage rate-like percentages were found near relevant keywords.",
+        sourceKind,
+        rejectedQuoteCount: rawQuotes.length || undefined,
+      },
     };
   }
 
@@ -225,6 +233,61 @@ function dedupeQuotes(quotes: ExtractedRateQuote[]) {
       return true;
     })
     .slice(0, 6);
+}
+
+function filterProgramSpecificQuotes(quotes: ExtractedRateQuote[], source: RateSourceRecord, pageText: string) {
+  const sourceKind = getSourceKind(source);
+  if (!requiresProgramSpecificEvidence(sourceKind)) return quotes;
+  return quotes.filter((quote) => hasProgramSpecificEvidence(quote.rawText, source, sourceKind) || hasProgramSpecificEvidence(pageText, source, sourceKind));
+}
+
+function requiresProgramSpecificEvidence(sourceKind: string | null) {
+  return sourceKind === "professional_program" || sourceKind === "doctor_program";
+}
+
+function hasProgramSpecificEvidence(text: string, source: RateSourceRecord, sourceKind: string | null) {
+  const lower = text.toLowerCase();
+  return getProgramEvidenceKeywords(source, sourceKind).some((keyword) => lower.includes(keyword.toLowerCase()));
+}
+
+function getProgramEvidenceKeywords(source: RateSourceRecord, sourceKind: string | null) {
+  const configured = source.selectorHints?.programEvidenceKeywords;
+  if (Array.isArray(configured)) {
+    const keywords = configured.filter((keyword): keyword is string => typeof keyword === "string" && keyword.trim().length > 0);
+    if (keywords.length) return keywords;
+  }
+
+  if (sourceKind === "professional_program") {
+    return [
+      "professional mortgage",
+      "professional loan",
+      "professional home loan",
+      "medical professional",
+      "attorney",
+      "certified public accountant",
+      "CPA",
+      "ATP pilot",
+      "registered nurse",
+      "nurse practitioner",
+      "veterinarian",
+    ];
+  }
+
+  if (sourceKind === "doctor_program") {
+    return [
+      "physician",
+      "doctor",
+      "dentist",
+      "medical professional",
+      "doctor and dentist",
+      "physician mortgage",
+      "doctor loan",
+      "dental medicine",
+      "veterinarian",
+    ];
+  }
+
+  return [];
 }
 
 function scorePercentCandidates<T extends { context: string; lowerContext: string; value: number }>(candidates: T[]) {
