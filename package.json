@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:seed": "tsx lib/db/seed.ts"
+    "db:seed": "tsx lib/db/seed.ts",
+    "rates:scrape": "tsx lib/rates/runScraper.ts",
+    "rates:scheduler": "tsx lib/rates/scheduler.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -46,6 +48,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "playwright-core": "^1.60.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5"

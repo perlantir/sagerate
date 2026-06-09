@@ -78,6 +78,44 @@ export type LenderProgram = {
   lastVerified?: string | null;
 };
 
+export type MortgageRateSource = {
+  id: string;
+  programSlug: string;
+  lenderName: string;
+  programName?: string | null;
+  programType: LoanProgramType;
+  sourceUrl: string;
+  scrapeMethod: "fetch_html" | "browser";
+  selectorHints?: Record<string, unknown> | null;
+  notes?: string | null;
+  isActive: boolean;
+};
+
+export type MortgageRateSnapshot = {
+  id: string;
+  runId?: string | null;
+  sourceId?: string | null;
+  scrapedAt: string;
+  programSlug: string;
+  lenderName: string;
+  programName?: string | null;
+  programType: LoanProgramType;
+  sourceUrl: string;
+  loanProduct?: string | null;
+  interestRate?: number | null;
+  apr?: number | null;
+  points?: number | null;
+  monthlyPayment?: number | null;
+  closingFees?: number | null;
+  lenderFees?: number | null;
+  thirdPartyFees?: number | null;
+  status: "success" | "no_rate_found" | "blocked" | "error";
+  confidence?: number | null;
+  rawText?: string | null;
+  errorMessage?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
 export type LeadRecord = {
   id: string;
   createdAt: string;

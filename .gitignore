@@ -36,6 +36,7 @@ yarn-error.log*
 
 # local assistant context
 CLAUDE.md
+.rate-scraper-chrome-profile/
 
 # vercel
 .vercel

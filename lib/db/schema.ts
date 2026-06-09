@@ -198,6 +198,61 @@ export const lenderPrograms = pgTable("lender_programs", {
   displayOrder: integer("display_order").default(0),
 });
 
+export const mortgageRateSources = pgTable("mortgage_rate_sources", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  programSlug: text("program_slug").notNull(),
+  lenderName: text("lender_name").notNull(),
+  programName: text("program_name"),
+  programType: text("program_type", { enum: ["professional", "physician_doctor"] }).notNull(),
+  sourceUrl: text("source_url").notNull(),
+  scrapeMethod: text("scrape_method", { enum: ["fetch_html", "browser"] }).default("fetch_html").notNull(),
+  selectorHints: jsonb("selector_hints").$type<Record<string, unknown>>().default({}),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const mortgageRateScrapeRuns = pgTable("mortgage_rate_scrape_runs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  trigger: text("trigger", { enum: ["manual", "schedule_10am", "schedule_3pm"] }).default("manual").notNull(),
+  mode: text("mode", { enum: ["fetch_html", "browser"] }).default("fetch_html").notNull(),
+  status: text("status", { enum: ["running", "success", "partial", "error"] }).default("running").notNull(),
+  totalSources: integer("total_sources").default(0).notNull(),
+  successfulSources: integer("successful_sources").default(0).notNull(),
+  failedSources: integer("failed_sources").default(0).notNull(),
+  notes: text("notes"),
+});
+
+export const mortgageRateSnapshots = pgTable("mortgage_rate_snapshots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  runId: uuid("run_id").references(() => mortgageRateScrapeRuns.id),
+  sourceId: uuid("source_id").references(() => mortgageRateSources.id),
+  scrapedAt: timestamp("scraped_at", { withTimezone: true }).defaultNow().notNull(),
+  programSlug: text("program_slug").notNull(),
+  lenderName: text("lender_name").notNull(),
+  programName: text("program_name"),
+  programType: text("program_type", { enum: ["professional", "physician_doctor"] }).notNull(),
+  sourceUrl: text("source_url").notNull(),
+  loanProduct: text("loan_product"),
+  interestRate: numeric("interest_rate"),
+  apr: numeric("apr"),
+  points: numeric("points"),
+  monthlyPayment: integer("monthly_payment"),
+  closingFees: integer("closing_fees"),
+  lenderFees: integer("lender_fees"),
+  thirdPartyFees: integer("third_party_fees"),
+  status: text("status", { enum: ["success", "no_rate_found", "blocked", "error"] }).notNull(),
+  confidence: numeric("confidence"),
+  rawText: text("raw_text"),
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
+});
+
 export const financialTransactions = pgTable("financial_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
   leadId: uuid("lead_id").references(() => leads.id),

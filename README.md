@@ -41,6 +41,35 @@ npm run db:generate
 npm run db:push
 ```
 
+## Mortgage Rate Scraper
+
+The scraper stores public professional and doctor mortgage rate observations in Postgres. It starts from the configured lender programs, records every source check, and marks pages that block automation or do not publish rates.
+
+Run one scrape:
+
+```bash
+npm run rates:scrape
+```
+
+Run with local installed Chrome through `playwright-core`:
+
+```bash
+npm run rates:scrape -- --mode=browser
+```
+
+Run the local scheduler. Keep this process open on the computer that should perform the checks; by default it runs at 10:00 and 15:00 local time.
+
+```bash
+npm run rates:scheduler
+```
+
+Useful environment variables:
+
+- `RATE_SCRAPER_MODE=fetch_html` or `browser`
+- `RATE_SCRAPER_TIMES=10:00,15:00`
+- `RATE_SCRAPER_HEADLESS=false` to watch Chrome and sign into any source that requires a session
+- `RATE_SCRAPER_SOURCE_OVERRIDES` as JSON to replace a seeded lender URL with the exact public program/rate page
+
 ## Validation
 
 ```bash
