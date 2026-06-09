@@ -1,4 +1,5 @@
 import type { LenderProgram } from "@/lib/types";
+import { PHYSICIAN_DOCTOR_LOAN_DEGREES, PROFESSIONAL_LOAN_DEGREES } from "@/lib/constants/professions";
 import { STATE_CODES } from "@/lib/constants/states";
 
 const regional = (codes: string[]) => codes;
@@ -6,9 +7,10 @@ const regional = (codes: string[]) => codes;
 export const LENDER_PROGRAMS: LenderProgram[] = [
   {
     id: "fifth-third-doctor-dentist",
+    programType: "physician_doctor",
     lenderName: "Fifth Third Bank",
     programName: "Doctor and Dentist Mortgage",
-    acceptedDegrees: ["md", "do", "dds", "dmd", "dvm"],
+    acceptedDegrees: PHYSICIAN_DOCTOR_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: null,
     maxLoanAmountZeroDown: 1000000,
@@ -32,9 +34,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "keybank-professional",
+    programType: "professional",
     lenderName: "KeyBank",
     programName: "Professional Mortgage",
-    acceptedDegrees: ["md", "do", "dds", "jd", "cpa", "pa", "np", "crna"],
+    acceptedDegrees: PROFESSIONAL_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: null,
     maxLoanAmountZeroDown: 1000000,
@@ -58,9 +61,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "truist-doctor-loan",
+    programType: "physician_doctor",
     lenderName: "Truist",
     programName: "Doctor Loan",
-    acceptedDegrees: ["md", "do", "dpm", "dds", "dmd"],
+    acceptedDegrees: PHYSICIAN_DOCTOR_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: 10,
     maxLoanAmountZeroDown: 1000000,
@@ -84,9 +88,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "first-horizon-medical",
+    programType: "physician_doctor",
     lenderName: "First Horizon",
     programName: "Medical Professional Mortgage",
-    acceptedDegrees: ["md", "do", "dds", "dmd"],
+    acceptedDegrees: PHYSICIAN_DOCTOR_LOAN_DEGREES,
     acceptsResidents: false,
     yearsFromTrainingMax: null,
     maxLoanAmountZeroDown: null,
@@ -110,9 +115,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "citizens-professional",
+    programType: "professional",
     lenderName: "Citizens Bank",
     programName: "Professional Mortgage",
-    acceptedDegrees: ["md", "do", "dds", "jd"],
+    acceptedDegrees: PROFESSIONAL_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: 10,
     maxLoanAmountZeroDown: 850000,
@@ -136,9 +142,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "td-bank-medical",
+    programType: "physician_doctor",
     lenderName: "TD Bank",
     programName: "Medical Professional Mortgage",
-    acceptedDegrees: ["md", "do", "dds"],
+    acceptedDegrees: PHYSICIAN_DOCTOR_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: 10,
     maxLoanAmountZeroDown: 750000,
@@ -162,9 +169,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "pnc-medical-professional",
+    programType: "physician_doctor",
     lenderName: "PNC Bank",
     programName: "Medical Professional Mortgage",
-    acceptedDegrees: ["md", "do"],
+    acceptedDegrees: PHYSICIAN_DOCTOR_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: 10,
     maxLoanAmountZeroDown: 1000000,
@@ -188,9 +196,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "flagstar-professional",
+    programType: "professional",
     lenderName: "Flagstar Bank",
     programName: "Professional Loan",
-    acceptedDegrees: ["md", "do", "dds", "dmd", "other"],
+    acceptedDegrees: PROFESSIONAL_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: 10,
     maxLoanAmountZeroDown: 1000000,
@@ -214,9 +223,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "bmo-medical",
+    programType: "physician_doctor",
     lenderName: "BMO",
     programName: "Medical Professional Mortgage",
-    acceptedDegrees: ["md", "do", "dds"],
+    acceptedDegrees: PHYSICIAN_DOCTOR_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: null,
     maxLoanAmountZeroDown: 1000000,
@@ -240,9 +250,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "northwest-bank-physician",
+    programType: "physician_doctor",
     lenderName: "Northwest Bank",
     programName: "Physician Mortgage",
-    acceptedDegrees: ["md", "do", "dds", "dmd", "dpm"],
+    acceptedDegrees: PHYSICIAN_DOCTOR_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: 10,
     maxLoanAmountZeroDown: 750000,
@@ -266,9 +277,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "old-national-medical",
+    programType: "physician_doctor",
     lenderName: "Old National Bank",
     programName: "Medical Professional Mortgage",
-    acceptedDegrees: ["md", "do", "dds"],
+    acceptedDegrees: PHYSICIAN_DOCTOR_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: 10,
     maxLoanAmountZeroDown: 750000,
@@ -292,9 +304,10 @@ export const LENDER_PROGRAMS: LenderProgram[] = [
   },
   {
     id: "arvest-physician",
+    programType: "physician_doctor",
     lenderName: "Arvest Bank",
     programName: "Physician Loan",
-    acceptedDegrees: ["md", "do", "dds"],
+    acceptedDegrees: PHYSICIAN_DOCTOR_LOAN_DEGREES,
     acceptsResidents: true,
     yearsFromTrainingMax: 10,
     maxLoanAmountZeroDown: 750000,

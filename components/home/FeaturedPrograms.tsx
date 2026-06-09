@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import { LinkButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LENDER_PROGRAMS } from "@/lib/constants/programs";
+import { getDegreeLabel, getLoanProgramTypeLabel } from "@/lib/constants/professions";
 import { formatCurrency } from "@/lib/utils/formatting";
 
 export function FeaturedPrograms() {
@@ -20,22 +21,25 @@ export function FeaturedPrograms() {
           </LinkButton>
         </div>
         <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="hidden grid-cols-[1.2fr_1fr_1fr_.8fr] bg-navy px-5 py-3 text-sm font-bold text-white md:grid">
+          <div className="hidden grid-cols-[1.2fr_1fr_1fr_1fr_.8fr] bg-navy px-5 py-3 text-sm font-bold text-white md:grid">
             <span>Lender</span>
-            <span>Eligible Degrees</span>
+            <span>Loan Type</span>
+            <span>Eligible</span>
             <span>Max 0% Down</span>
             <span>PMI</span>
           </div>
           {programs.map((program) => (
-            <div key={program.id} className="grid gap-3 border-t border-slate-100 px-5 py-4 text-sm md:grid-cols-[1.2fr_1fr_1fr_.8fr] md:items-center">
+            <div key={program.id} className="grid gap-3 border-t border-slate-100 px-5 py-4 text-sm md:grid-cols-[1.2fr_1fr_1fr_1fr_.8fr] md:items-center">
               <div>
                 <div className="font-bold text-navy">{program.lenderName}</div>
                 <div className="text-slate-500">{program.programName}</div>
               </div>
+              <div className="font-semibold text-slate-700">{getLoanProgramTypeLabel(program.programType)}</div>
               <div className="flex flex-wrap gap-1">
                 {program.acceptedDegrees.slice(0, 4).map((degree) => (
-                  <Badge key={degree}>{degree.toUpperCase()}</Badge>
+                  <Badge key={degree}>{getDegreeLabel(degree)}</Badge>
                 ))}
+                {program.acceptedDegrees.length > 4 ? <Badge>+{program.acceptedDegrees.length - 4}</Badge> : null}
               </div>
               <div className="font-semibold text-slate-700">{formatCurrency(program.maxLoanAmountZeroDown)}</div>
               <Badge className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700">{program.pmiRequired ? "Required" : "None"}</Badge>

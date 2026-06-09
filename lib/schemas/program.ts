@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { professionDegreeSchema } from "@/lib/schemas/lead";
+import { loanProgramTypeSchema, professionDegreeSchema } from "@/lib/schemas/lead";
 
 export const programSchema = z.object({
+  programType: loanProgramTypeSchema.default("professional"),
   lenderName: z.string().min(1),
   programName: z.string().optional(),
   acceptedDegrees: z.array(professionDegreeSchema).min(1),

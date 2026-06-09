@@ -1,7 +1,8 @@
-import type { CareerStage, LenderProgram, LoanPurpose, ProfessionDegree } from "@/lib/types";
+import type { CareerStage, LenderProgram, LoanProgramType, LoanPurpose, ProfessionDegree } from "@/lib/types";
 import { LENDER_PROGRAMS } from "@/lib/constants/programs";
 
 export type ProgramFilters = {
+  programType?: LoanProgramType | string | null;
   degree?: ProfessionDegree | string | null;
   state?: string | null;
   loanAmount?: number | null;
@@ -18,6 +19,9 @@ export async function listPrograms(filters: ProgramFilters = {}): Promise<Lender
 
 export function filterPrograms(programs: LenderProgram[], filters: ProgramFilters) {
   return programs.filter((program) => {
+    if (filters.programType && filters.programType !== "all" && program.programType !== filters.programType) {
+      return false;
+    }
     if (filters.degree && filters.degree !== "all" && !program.acceptedDegrees.includes(filters.degree as ProfessionDegree)) {
       return false;
     }

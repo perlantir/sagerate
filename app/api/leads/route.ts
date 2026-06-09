@@ -59,6 +59,7 @@ export async function POST(request: Request) {
   });
 
   const matchedProgramCount = await countMatchedPrograms({
+    programType: input.loanProgramType,
     degree: input.professionDegree,
     state: zip?.state ?? input.propertyState,
     loanAmount: input.purchasePrice ?? input.estimatedHomeValue ?? null,

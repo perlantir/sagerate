@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { summarizeDegrees } from "@/lib/constants/professions";
 import type { BuyerRecord } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils/formatting";
 
@@ -24,7 +25,9 @@ export function BuyerTable({ buyers }: { buyers: BuyerRecord[] }) {
               <td className="px-4 py-3">
                 <Badge>{buyer.status}</Badge>
               </td>
-              <td className="px-4 py-3">{buyer.acceptedDegrees.map((degree) => degree.toUpperCase()).join(", ")}</td>
+              <td className="px-4 py-3" title={summarizeDegrees(buyer.acceptedDegrees, 50)}>
+                {summarizeDegrees(buyer.acceptedDegrees)}
+              </td>
               <td className="px-4 py-3">{buyer.licensedStates.join(", ")}</td>
               <td className="px-4 py-3">{buyer.maxLeadsPerDay ?? "NA"}</td>
               <td className="px-4 py-3">{buyer.leadsPurchasedToday}</td>

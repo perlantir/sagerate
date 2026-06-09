@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { getDegreeLabel, getLoanProgramTypeLabel } from "@/lib/constants/professions";
 import type { LeadRecord } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils/formatting";
 
@@ -7,7 +8,8 @@ export function LeadDetail({ lead }: { lead: LeadRecord }) {
     {
       title: "Professional Info",
       rows: [
-        ["Degree", lead.professionDegree.toUpperCase()],
+        ["Loan Type", getLoanProgramTypeLabel(lead.loanProgramType)],
+        ["Profession", getDegreeLabel(lead.professionDegree)],
         ["Career Stage", lead.careerStage ?? "NA"],
         ["Credential", lead.credentialVerified ? "Verified" : "Not verified"],
         ["Credential ID", lead.credentialVerificationId ?? "NA"],

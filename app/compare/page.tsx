@@ -37,6 +37,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
         <ProgramTable
           programs={programs}
           initialFilters={{
+            programType: typeof params.programType === "string" ? params.programType : undefined,
             degree: typeof params.degree === "string" ? params.degree : undefined,
             state: typeof params.state === "string" ? params.state.toUpperCase() : undefined,
           }}

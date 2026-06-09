@@ -1,4 +1,5 @@
 import { subDays, format } from "date-fns";
+import { getDegreeLabel } from "@/lib/constants/professions";
 import { listLeads } from "@/lib/services/leads";
 import { mockBuyers } from "@/lib/services/mockData";
 import type { DashboardStats } from "@/lib/types";
@@ -20,7 +21,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       acc[lead.status] = (acc[lead.status] ?? 0) + 1;
       return acc;
     }, {}),
-    leadsByProfession: group(leads.map((lead) => lead.professionDegree.toUpperCase())),
+    leadsByProfession: group(leads.map((lead) => getDegreeLabel(lead.professionDegree))),
     leadsBySource: group(leads.map((lead) => lead.source ?? "direct")),
     leadsByDay: Array.from({ length: 30 }, (_, index) => {
       const date = subDays(new Date(), 29 - index);

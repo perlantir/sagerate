@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DEGREE_OPTIONS } from "@/lib/constants/professions";
+import { DEGREE_OPTIONS, getLoanProgramTypeLabel } from "@/lib/constants/professions";
 import { CAREER_STAGES } from "@/lib/constants/loanTypes";
 import { CREDIT_RANGES } from "@/lib/constants/creditRanges";
 import type { LenderProgram } from "@/lib/types";
@@ -27,6 +27,8 @@ export function QuickCaptureModal({
   const [error, setError] = useState<string | null>(null);
 
   if (!program) return null;
+  const degreeOptions = DEGREE_OPTIONS.filter((option) => program.acceptedDegrees.includes(option.value));
+  const defaultProfessionDegree = degreeOptions.find((option) => option.value === defaultDegree)?.value ?? degreeOptions[0]?.value ?? program.acceptedDegrees[0];
 
   async function submit(formData: FormData) {
     setSubmitting(true);
@@ -38,6 +40,7 @@ export function QuickCaptureModal({
       body: JSON.stringify({
         ...payload,
         intakePath: "program_table",
+        loanProgramType: program?.programType,
         selectedProgramId: program?.id,
         loanPurpose: "purchase",
         consent: formData.get("consent") === "on",
@@ -60,6 +63,7 @@ export function QuickCaptureModal({
             <p className="text-sm font-semibold text-gold">{program.lenderName}</p>
             <h2 className="text-2xl font-bold text-navy">Rate options preview</h2>
             <p className="mt-1 text-sm text-slate-600">Answer a few details to see professional mortgage rate options for this program.</p>
+            <p className="mt-2 text-xs font-bold uppercase tracking-[0.08em] text-slate-500">{getLoanProgramTypeLabel(program.programType)}</p>
           </div>
           <button type="button" onClick={onClose} className="gold-focus rounded-md p-2 text-slate-500 hover:bg-slate-100" aria-label="Close modal">
             <X size={20} />
@@ -75,8 +79,8 @@ export function QuickCaptureModal({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="professionDegree">Degree Type</Label>
-              <Select id="professionDegree" name="professionDegree" defaultValue={defaultDegree === "all" ? program.acceptedDegrees[0] : defaultDegree}>
-                {DEGREE_OPTIONS.map((option) => (
+              <Select id="professionDegree" name="professionDegree" defaultValue={defaultProfessionDegree}>
+                {degreeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>

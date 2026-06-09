@@ -9,6 +9,7 @@ import type { LenderProgram } from "@/lib/types";
 import { filterPrograms } from "@/lib/services/programs";
 
 export type ProgramFiltersState = {
+  programType: string;
   degree: string;
   careerStage: string;
   state: string;
@@ -18,6 +19,7 @@ export type ProgramFiltersState = {
 };
 
 const defaultFilters: ProgramFiltersState = {
+  programType: "all",
   degree: "all",
   careerStage: "all",
   state: "all",
@@ -49,10 +51,11 @@ export function ProgramTable({ programs, initialFilters = {} }: { programs: Lend
       {filtered.length === 0 ? <TableEmptyState /> : null}
       <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:block">
         <div className="table-scroll overflow-x-auto">
-          <table className="w-full min-w-[1240px] border-collapse text-left">
+          <table className="w-full min-w-[1360px] border-collapse text-left">
             <thead className="bg-navy text-xs uppercase tracking-[0.08em] text-white">
               <tr>
                 <SortableHeader label="Lender" onClick={() => setSortKey("lenderName")} />
+                <th className="px-4 py-3">Loan Type</th>
                 <th className="px-4 py-3">Program Name</th>
                 <th className="px-4 py-3">Best For</th>
                 <th className="px-4 py-3">Down Payment</th>

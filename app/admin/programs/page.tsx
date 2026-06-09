@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getLoanProgramTypeLabel, summarizeDegrees } from "@/lib/constants/professions";
 import { requireAdmin } from "@/lib/services/auth";
 import { listPrograms } from "@/lib/services/programs";
 import { formatCurrency } from "@/lib/utils/formatting";
@@ -26,7 +27,7 @@ export default async function AdminProgramsPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-navy text-xs uppercase tracking-[0.08em] text-white">
             <tr>
-              {["Lender", "Degrees", "States", "Max Total", "PMI", "Active", "Action"].map((header) => (
+              {["Lender", "Loan Type", "Eligible", "States", "Max Total", "PMI", "Active", "Action"].map((header) => (
                 <th key={header} className="px-4 py-3">
                   {header}
                 </th>
@@ -37,7 +38,10 @@ export default async function AdminProgramsPage() {
             {programs.map((program) => (
               <tr key={program.id} className="border-t border-slate-100">
                 <td className="px-4 py-3 font-bold text-navy">{program.lenderName}</td>
-                <td className="px-4 py-3">{program.acceptedDegrees.map((degree) => degree.toUpperCase()).join(", ")}</td>
+                <td className="px-4 py-3">{getLoanProgramTypeLabel(program.programType)}</td>
+                <td className="px-4 py-3" title={summarizeDegrees(program.acceptedDegrees, 50)}>
+                  {summarizeDegrees(program.acceptedDegrees)}
+                </td>
                 <td className="px-4 py-3">{program.licensedStates.length > 20 ? "Nationwide" : program.licensedStates.join(", ")}</td>
                 <td className="px-4 py-3">{formatCurrency(program.maxLoanAmountTotal)}</td>
                 <td className="px-4 py-3">

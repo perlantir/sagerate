@@ -20,6 +20,7 @@ type FormStore = {
 
 const initialData: FormData = {
   intakePath: "multi_step_form",
+  loanProgramType: "professional",
   loanPurpose: "purchase",
   propertyUse: "primary",
   sessionId: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now()),
@@ -29,7 +30,7 @@ export const useFormStore = create<FormStore>((set) => ({
   step: 0,
   data: initialData,
   setStep: (step) => set({ step }),
-  next: () => set((state) => ({ step: Math.min(state.step + 1, 13) })),
+  next: () => set((state) => ({ step: Math.min(state.step + 1, 14) })),
   back: () => set((state) => ({ step: Math.max(state.step - 1, 0) })),
   update: (patch) => set((state) => ({ data: { ...state.data, ...patch } })),
   reset: () => set({ step: 0, data: initialData }),

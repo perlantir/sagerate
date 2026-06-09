@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { getDegreeLabel, getLoanProgramTypeLabel } from "@/lib/constants/professions";
 import type { LeadRecord } from "@/lib/types";
 
 export async function sendNewLeadNotification(lead: LeadRecord) {
@@ -11,7 +12,7 @@ export async function sendNewLeadNotification(lead: LeadRecord) {
     await resend.emails.send({
       from: "ProLoanMatch <leads@proloanmatch.com>",
       to: process.env.ADMIN_NOTIFICATION_EMAIL,
-      subject: `New ${lead.professionDegree.toUpperCase()} lead in ${lead.propertyState ?? "unknown state"}`,
+      subject: `New ${getLoanProgramTypeLabel(lead.loanProgramType)} lead: ${getDegreeLabel(lead.professionDegree)} in ${lead.propertyState ?? "unknown state"}`,
       text: [
         `${lead.firstName} ${lead.lastName}`,
         `${lead.email} | ${lead.phone}`,

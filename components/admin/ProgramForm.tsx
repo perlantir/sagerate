@@ -1,12 +1,23 @@
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LOAN_PROGRAM_TYPES } from "@/lib/constants/professions";
 import type { LenderProgram } from "@/lib/types";
 
 export function ProgramForm({ program }: { program?: LenderProgram | null }) {
   return (
     <form className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <Label>Loan type</Label>
+          <Select defaultValue={program?.programType ?? "professional"}>
+            {LOAN_PROGRAM_TYPES.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </div>
         <Field label="Lender name" defaultValue={program?.lenderName} />
         <Field label="Program name" defaultValue={program?.programName} />
         <Field label="Max 0% down" type="number" defaultValue={program?.maxLoanAmountZeroDown ?? ""} />

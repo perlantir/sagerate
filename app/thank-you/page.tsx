@@ -5,7 +5,7 @@ import { LinkButton } from "@/components/ui/button";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { BLOG_POSTS } from "@/lib/constants/content";
-import { getDegreeLabel } from "@/lib/constants/professions";
+import { getDegreeLabel, getLoanProgramTypeLabel } from "@/lib/constants/professions";
 import { getLead } from "@/lib/services/leads";
 import { formatCurrency } from "@/lib/utils/formatting";
 
@@ -29,12 +29,13 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
             <h1 className="font-serif text-4xl font-bold text-navy">You&apos;re Matched!</h1>
             <p className="mt-4 text-lg leading-8 text-slate-600">
               {lead
-                ? `Based on your ${getDegreeLabel(lead.professionDegree)} profile in ${lead.propertyState ?? "your state"}, you matched with ${matched} professional mortgage rate options. You'll hear from matched lenders within 24 hours.`
+                ? `Based on your ${getDegreeLabel(lead.professionDegree)} profile in ${lead.propertyState ?? "your state"}, you matched with ${matched} ${getLoanProgramTypeLabel(lead.loanProgramType).toLowerCase()} rate options. You'll hear from matched lenders within 24 hours.`
                 : "Your rate request has been received. You'll hear from matched lenders within 24 hours."}
             </p>
             {lead ? (
               <div className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 text-sm">
                 <Summary label="Profession" value={getDegreeLabel(lead.professionDegree)} />
+                <Summary label="Loan Type" value={getLoanProgramTypeLabel(lead.loanProgramType)} />
                 <Summary label="Property State" value={lead.propertyState ?? "Pending"} />
                 <Summary label="Loan Amount" value={formatCurrency(lead.purchasePrice ?? lead.estimatedHomeValue)} />
                 <Summary label="Timeline" value={lead.timeline ?? "Pending"} />

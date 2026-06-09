@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { getDegreeLabel, getLoanProgramTypeLabel } from "@/lib/constants/professions";
 import type { LeadRecord } from "@/lib/types";
 
 export function RecentLeadsFeed({ leads }: { leads: LeadRecord[] }) {
@@ -21,7 +22,7 @@ export function RecentLeadsFeed({ leads }: { leads: LeadRecord[] }) {
               <Badge>{lead.status}</Badge>
             </div>
             <div className="text-sm text-slate-600">
-              {lead.professionDegree.toUpperCase()} · {lead.propertyState ?? "NA"} · Score {lead.qualityScore}
+              {getLoanProgramTypeLabel(lead.loanProgramType)} · {getDegreeLabel(lead.professionDegree)} · {lead.propertyState ?? "NA"} · Score {lead.qualityScore}
             </div>
           </Link>
         ))}

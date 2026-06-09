@@ -9,14 +9,19 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FormProgressBar } from "@/components/form/FormProgressBar";
 import { FormStepWrapper } from "@/components/form/FormStepWrapper";
-import { DEGREE_OPTIONS, getDegreeLabel } from "@/lib/constants/professions";
+import {
+  LOAN_PROGRAM_TYPES,
+  getDegreeLabel,
+  getEligibleDegreeOptions,
+  getLoanProgramTypeLabel,
+} from "@/lib/constants/professions";
 import { CAREER_STAGES, LOAN_PURPOSES } from "@/lib/constants/loanTypes";
 import { CREDIT_RANGES } from "@/lib/constants/creditRanges";
 import { formatCurrency, formatPhone } from "@/lib/utils/formatting";
 import { useFormStore } from "@/lib/hooks/useFormStore";
 import type { LeadSubmissionInput } from "@/lib/schemas/lead";
 
-const totalSteps = 14;
+const totalSteps = 15;
 
 const propertyTypes = [
   { value: "single_family", label: "Single Family Home" },
@@ -60,7 +65,7 @@ export function MultiStepForm() {
   }, [step, data.sessionId]);
 
   const visibleStep = useMemo(() => {
-    if (data.loanPurpose !== "purchase" && step === 7) return "down-payment-skipped";
+    if (data.loanPurpose !== "purchase" && step === 8) return "down-payment-skipped";
     return step;
   }, [data.loanPurpose, step]);
 
@@ -72,7 +77,7 @@ export function MultiStepForm() {
 
   function skipDownPaymentIfNeeded() {
     if (visibleStep === "down-payment-skipped") {
-      setStep(8);
+      setStep(9);
       return true;
     }
     return false;
@@ -85,6 +90,7 @@ export function MultiStepForm() {
       ...data,
       ...form.getValues(),
       intakePath: "multi_step_form",
+      loanProgramType: data.loanProgramType ?? "professional",
       loanPurpose: data.loanPurpose ?? "purchase",
       propertyZip: data.propertyZip ?? "",
       firstName: data.firstName ?? "",
@@ -109,7 +115,7 @@ export function MultiStepForm() {
 
   function continueClick() {
     if (skipDownPaymentIfNeeded()) return;
-    if (step === 13) {
+    if (step === 14) {
       void submit();
       return;
     }
@@ -139,7 +145,7 @@ export function MultiStepForm() {
         </Button>
         <Button type="button" variant="gold" onClick={continueClick} disabled={submitting}>
           {submitting ? <Loader2 className="animate-spin" size={16} /> : null}
-          {step === 13 ? "See My Rate Options" : "Continue"}
+          {step === 14 ? "See My Rate Options" : "Continue"}
         </Button>
       </div>
       <p className="mt-7 text-center text-xs font-semibold text-slate-500">Your information is secure and will only be used to show relevant rate options.</p>
@@ -163,9 +169,35 @@ function renderStep({
   switch (step) {
     case 0:
       return (
-        <Question title="What is your professional degree?">
+        <Question title="Which loan option do you want to compare?">
           <div className="grid gap-3 sm:grid-cols-2">
-            {DEGREE_OPTIONS.map((option) => (
+            {LOAN_PROGRAM_TYPES.map((option) => (
+              <ChoiceCard
+                key={option.value}
+                selected={(data.loanProgramType ?? "professional") === option.value}
+                title={option.label}
+                body={option.description}
+                onClick={() =>
+                  choose(
+                    {
+                      loanProgramType: option.value,
+                      professionDegree:
+                        data.professionDegree && option.eligibleDegrees.includes(data.professionDegree) ? data.professionDegree : undefined,
+                    },
+                    false,
+                  )
+                }
+              />
+            ))}
+          </div>
+        </Question>
+      );
+    case 1: {
+      const degreeOptions = getEligibleDegreeOptions(data.loanProgramType);
+      return (
+        <Question title="Which eligible professional category fits you?">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {degreeOptions.map((option) => (
               <ChoiceCard
                 key={option.value}
                 selected={data.professionDegree === option.value}
@@ -175,12 +207,16 @@ function renderStep({
               />
             ))}
           </div>
+          {data.loanProgramType === "physician_doctor" ? (
+            <p className="rounded-md bg-slate-50 p-3 text-sm font-semibold text-slate-600">Psychiatrists must be licensed for physician / doctor loan eligibility.</p>
+          ) : null}
           {data.professionDegree === "other" ? (
             <Input placeholder="Specify your professional degree" onChange={(event) => update({ professionDegreeOther: event.target.value })} />
           ) : null}
         </Question>
       );
-    case 1:
+    }
+    case 2:
       return (
         <Question title={careerQuestion(data.professionDegree)}>
           <div className="grid gap-3">
@@ -205,7 +241,7 @@ function renderStep({
           ) : null}
         </Question>
       );
-    case 2:
+    case 3:
       return (
         <Question title="What rate options are you looking for?">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -220,7 +256,7 @@ function renderStep({
           </div>
         </Question>
       );
-    case 3:
+    case 4:
       return (
         <Question title="What type of property?">
           <div className="grid gap-3">
@@ -230,7 +266,7 @@ function renderStep({
           </div>
         </Question>
       );
-    case 4:
+    case 5:
       return (
         <Question title="How will this property be used?">
           <div className="grid gap-3">
@@ -245,7 +281,7 @@ function renderStep({
           ) : null}
         </Question>
       );
-    case 5:
+    case 6:
       return (
         <Question title="Where is the property located?">
           <Input
@@ -267,7 +303,7 @@ function renderStep({
           ) : null}
         </Question>
       );
-    case 6:
+    case 7:
       return (
         <Question title={data.loanPurpose === "purchase" ? "What is the expected purchase price?" : "What is your home's estimated value?"}>
           <PriceInput
@@ -283,7 +319,7 @@ function renderStep({
           ) : null}
         </Question>
       );
-    case 7:
+    case 8:
       if (data.loanPurpose !== "purchase") {
         return <Question title="Down payment is skipped for refinance requests." />;
       }
@@ -303,7 +339,7 @@ function renderStep({
           <p className="text-sm font-semibold text-gold">Many professional loan programs offer 0% down with no PMI.</p>
         </Question>
       );
-    case 8:
+    case 9:
       return (
         <Question title="Tell us about your student loans">
           <ChipGroup
@@ -342,7 +378,7 @@ function renderStep({
           />
         </Question>
       );
-    case 9:
+    case 10:
       return (
         <Question title="What is your estimated credit score?">
           <div className="grid gap-3">
@@ -359,7 +395,7 @@ function renderStep({
           <p className="text-sm font-semibold text-slate-500">This won&apos;t affect your credit score.</p>
         </Question>
       );
-    case 10:
+    case 11:
       return (
         <Question title="When do you need to close?">
           <div className="grid gap-3">
@@ -375,7 +411,7 @@ function renderStep({
           </div>
         </Question>
       );
-    case 11:
+    case 12:
       return (
         <Question title="What is your employment situation?">
           <div className="grid gap-3">
@@ -403,7 +439,7 @@ function renderStep({
           ) : null}
         </Question>
       );
-    case 12:
+    case 13:
       return (
         <Question title="Where should we send your matched program results?">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -432,13 +468,14 @@ function renderStep({
           </div>
         </Question>
       );
-    case 13:
+    case 14:
       return (
         <Question title="Consent & Submit">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div className="mb-3 text-sm font-bold text-navy">Your rate search summary</div>
             <div className="flex flex-wrap gap-2">
               <Badge>{getDegreeLabel(data.professionDegree)}</Badge>
+              <Badge>{getLoanProgramTypeLabel(data.loanProgramType)}</Badge>
               <Badge>{data.loanPurpose ?? "purchase"}</Badge>
               <Badge>{data.propertyZip ?? "Zip pending"}</Badge>
               <Badge>{data.creditScoreRange ?? "Credit pending"}</Badge>
@@ -553,7 +590,9 @@ function PriceInput({ value, onChange }: { value?: number | null; onChange: (val
 }
 
 function isMedical(degree?: string | null) {
-  return ["md", "do", "dds", "dmd", "dpm", "dvm"].includes(degree ?? "");
+  return ["medical_resident", "md", "do", "dds", "dmd", "dpm", "dvm", "od", "ophthalmologist_md", "pharmd", "pa", "rn", "np", "crna", "cns"].includes(
+    degree ?? "",
+  );
 }
 
 function careerQuestion(degree?: string | null) {

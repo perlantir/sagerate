@@ -1,16 +1,24 @@
+export type LoanProgramType = "professional" | "physician_doctor";
+
 export type ProfessionDegree =
+  | "medical_resident"
   | "md"
   | "do"
   | "dds"
   | "dmd"
   | "dpm"
   | "dvm"
+  | "od"
+  | "ophthalmologist_md"
   | "jd"
   | "cpa"
   | "pharmd"
   | "pa"
+  | "rn"
   | "np"
   | "crna"
+  | "cns"
+  | "atp_pilot"
   | "other";
 
 export type LeadStatus =
@@ -43,6 +51,7 @@ export type CreditScoreRange =
 
 export type LenderProgram = {
   id: string;
+  programType: LoanProgramType;
   lenderName: string;
   programName: string;
   acceptedDegrees: ProfessionDegree[];
@@ -82,6 +91,7 @@ export type LeadRecord = {
   utmContent?: string | null;
   utmTerm?: string | null;
   intakePath: IntakePath;
+  loanProgramType: LoanProgramType;
   selectedProgramId?: string | null;
   professionDegree: ProfessionDegree;
   professionDegreeOther?: string | null;

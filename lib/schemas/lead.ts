@@ -9,23 +9,32 @@ const booleanish = z.preprocess((value) => {
 }, z.boolean().optional());
 
 export const professionDegreeSchema = z.enum([
+  "medical_resident",
   "md",
   "do",
   "dds",
   "dmd",
   "dpm",
   "dvm",
+  "od",
+  "ophthalmologist_md",
   "jd",
   "cpa",
   "pharmd",
   "pa",
+  "rn",
   "np",
   "crna",
+  "cns",
+  "atp_pilot",
   "other",
 ]);
 
+export const loanProgramTypeSchema = z.enum(["professional", "physician_doctor"]);
+
 export const leadSubmissionSchema = z.object({
   intakePath: z.enum(["program_table", "multi_step_form"]),
+  loanProgramType: loanProgramTypeSchema.default("professional"),
   selectedProgramId: z.string().optional().nullable(),
   professionDegree: professionDegreeSchema,
   professionDegreeOther: z.string().max(80).optional().nullable(),
@@ -89,6 +98,7 @@ export const leadSubmissionSchema = z.object({
 
 export const quickCaptureSchema = leadSubmissionSchema.pick({
   intakePath: true,
+  loanProgramType: true,
   selectedProgramId: true,
   professionDegree: true,
   careerStage: true,

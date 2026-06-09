@@ -1,7 +1,7 @@
 "use client";
 
 import { RotateCcw, SlidersHorizontal } from "lucide-react";
-import { DEGREE_OPTIONS } from "@/lib/constants/professions";
+import { DEGREE_OPTIONS, LOAN_PROGRAM_TYPES, getEligibleDegreeOptions } from "@/lib/constants/professions";
 import { CAREER_STAGES } from "@/lib/constants/loanTypes";
 import { STATES } from "@/lib/constants/states";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,32 @@ export function ProgramFilters({
   onChange: (filters: ProgramFiltersState) => void;
   onReset: () => void;
 }) {
+  const degreeOptions = filters.programType === "all" ? DEGREE_OPTIONS.filter((option) => option.value !== "other") : getEligibleDegreeOptions(filters.programType);
+
+  function updateProgramType(programType: string) {
+    const nextDegreeOptions = programType === "all" ? DEGREE_OPTIONS.filter((option) => option.value !== "other") : getEligibleDegreeOptions(programType);
+    onChange({
+      ...filters,
+      programType,
+      degree: filters.degree !== "all" && !nextDegreeOptions.some((option) => option.value === filters.degree) ? "all" : filters.degree,
+    });
+  }
+
   return (
     <div className="sticky top-16 z-30 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2 text-sm font-bold text-navy">
         <SlidersHorizontal size={16} />
         Rate search filters
       </div>
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
+        <FilterField label="Loan Type">
+          <Select value={filters.programType} onChange={(event) => updateProgramType(event.target.value)} aria-label="Loan type">
+            <option value="all">All loan types</option>
+            {LOAN_PROGRAM_TYPES.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </Select>
+        </FilterField>
         <FilterField label="Loan Purpose">
           <Select value={filters.loanPurpose} onChange={(event) => onChange({ ...filters, loanPurpose: event.target.value })} aria-label="Loan purpose">
             <option value="purchase">Purchase</option>
@@ -34,7 +53,7 @@ export function ProgramFilters({
         <FilterField label="Profession">
           <Select value={filters.degree} onChange={(event) => onChange({ ...filters, degree: event.target.value })} aria-label="Profession degree">
             <option value="all">All degrees</option>
-            {DEGREE_OPTIONS.filter((option) => option.value !== "other").map((option) => (
+            {degreeOptions.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </Select>

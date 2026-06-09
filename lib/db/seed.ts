@@ -14,8 +14,10 @@ async function main() {
     return;
   }
 
+  await db.delete(lenderPrograms);
   await db.insert(lenderPrograms).values(
     LENDER_PROGRAMS.map((program) => ({
+      programType: program.programType,
       lenderName: program.lenderName,
       programName: program.programName,
       acceptedDegrees: program.acceptedDegrees,

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getDegreeLabel, getLoanProgramTypeLabel, summarizeDegrees } from "@/lib/constants/professions";
 import type { LenderProgram } from "@/lib/types";
 import { formatCurrency, formatPercent } from "@/lib/utils/formatting";
 
@@ -9,12 +10,16 @@ export function ProgramRow({ program, onQualify }: { program: LenderProgram; onQ
       <td className="min-w-48 px-4 py-4">
         <div className="font-bold text-navy">{program.lenderName}</div>
       </td>
+      <td className="min-w-40 px-4 py-4">
+        <Badge className="border-gold/25 bg-gold/10 text-navy">{getLoanProgramTypeLabel(program.programType)}</Badge>
+      </td>
       <td className="min-w-44 px-4 py-4 text-sm font-bold text-navy">{program.programName}</td>
-      <td className="min-w-44 px-4 py-4">
+      <td className="min-w-52 px-4 py-4" title={program.acceptedDegrees.map((degree) => getDegreeLabel(degree)).join(", ")}>
         <div className="flex flex-wrap gap-1">
-          {program.acceptedDegrees.map((degree) => (
-            <Badge key={degree}>{degree.toUpperCase()}</Badge>
+          {program.acceptedDegrees.slice(0, 4).map((degree) => (
+            <Badge key={degree}>{getDegreeLabel(degree)}</Badge>
           ))}
+          {program.acceptedDegrees.length > 4 ? <Badge>+{program.acceptedDegrees.length - 4}</Badge> : null}
         </div>
       </td>
       <td className="px-4 py-4">
@@ -60,7 +65,8 @@ export function ProgramMobileCard({ program, onQualify }: { program: LenderProgr
         <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">{program.pmiRequired ? "PMI" : "No PMI"}</Badge>
       </div>
       <div className="mt-4 grid gap-3 text-sm">
-        <Info label="Degrees" value={program.acceptedDegrees.map((degree) => degree.toUpperCase()).join(", ")} />
+        <Info label="Loan Type" value={getLoanProgramTypeLabel(program.programType)} />
+        <Info label="Eligible" value={summarizeDegrees(program.acceptedDegrees, 3)} />
         <Info label="Max 0% Down" value={formatCurrency(program.maxLoanAmountZeroDown)} />
         <Info label="Max Total" value={formatCurrency(program.maxLoanAmountTotal)} />
         <Info label="Residents" value={program.acceptsResidents ? "Accepted" : "Not accepted"} />

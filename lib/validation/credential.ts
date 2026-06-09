@@ -7,7 +7,23 @@ export type CredentialVerificationResult = {
   matchedName?: string | null;
 };
 
-const NPI_DEGREES = new Set<ProfessionDegree>(["md", "do", "dds", "dmd", "dpm"]);
+const NPI_DEGREES = new Set<ProfessionDegree>([
+  "medical_resident",
+  "md",
+  "do",
+  "dds",
+  "dmd",
+  "dpm",
+  "dvm",
+  "od",
+  "ophthalmologist_md",
+  "pharmd",
+  "pa",
+  "rn",
+  "np",
+  "crna",
+  "cns",
+]);
 
 export async function verifyCredential(input: {
   firstName: string;
@@ -31,7 +47,7 @@ export async function verifyCredential(input: {
       };
       const result = data.results?.[0];
       const taxonomyText = result?.taxonomies?.map((taxonomy) => taxonomy.desc).join(" ").toLowerCase() ?? "";
-      const taxonomyMatches = /(physician|dentist|podiatrist|osteopathic|medical|dental)/.test(taxonomyText);
+      const taxonomyMatches = /(physician|dentist|podiatrist|osteopathic|medical|dental|optometrist|pharmacist|assistant|nurse|veterinarian)/.test(taxonomyText);
       return {
         verified: Boolean(data.result_count && data.result_count > 0 && taxonomyMatches),
         source: "nppes",

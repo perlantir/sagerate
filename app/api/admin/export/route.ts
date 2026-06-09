@@ -12,6 +12,7 @@ export async function GET() {
       lastName: lead.lastName,
       email: lead.email,
       phone: lead.phone,
+      loanProgramType: lead.loanProgramType,
       degree: lead.professionDegree,
       state: lead.propertyState,
       loanPurpose: lead.loanPurpose,

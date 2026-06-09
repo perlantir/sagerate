@@ -4,6 +4,7 @@ import { listPrograms } from "@/lib/services/programs";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const programs = await listPrograms({
+    programType: url.searchParams.get("programType"),
     degree: url.searchParams.get("degree"),
     state: url.searchParams.get("state"),
     loanAmount: url.searchParams.get("loanAmount") ? Number(url.searchParams.get("loanAmount")) : null,
