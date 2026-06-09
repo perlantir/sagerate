@@ -1,4 +1,4 @@
-import type { LenderProgram } from "@/lib/types";
+import type { ComparableRateSnapshot, LenderProgram } from "@/lib/types";
 
 export type RateEstimateContext = {
   purchasePrice?: string | number | null;
@@ -6,6 +6,16 @@ export type RateEstimateContext = {
   loanPurpose?: string | null;
   loanTerm?: string | null;
   creditScore?: string | null;
+};
+
+export type ProgramRateQuote = ReturnType<typeof estimateProgramRate> & {
+  asOf?: string | null;
+  confidence?: number | null;
+  estimatedFields: string[];
+  loanProduct?: string | null;
+  source: "scraped" | "estimated";
+  sourceKind?: string | null;
+  sourceUrl?: string | null;
 };
 
 export function estimateProgramRate(program: LenderProgram, context: RateEstimateContext = {}) {
@@ -37,6 +47,52 @@ export function estimateProgramRate(program: LenderProgram, context: RateEstimat
   };
 }
 
+export function resolveProgramRateQuote(program: LenderProgram, context: RateEstimateContext, snapshot?: ComparableRateSnapshot | null): ProgramRateQuote {
+  const estimate = estimateProgramRate(program, context);
+  if (!snapshot || (!snapshot.interestRate && !snapshot.apr)) {
+    return {
+      ...estimate,
+      estimatedFields: ["interest rate", "APR", "payment", "fees"],
+      loanProduct: estimate.termLabel,
+      source: "estimated",
+    };
+  }
+
+  const interestRate = snapshot.interestRate ?? estimate.interestRate;
+  const apr = snapshot.apr ?? estimate.apr;
+  const monthlyPayment = snapshot.monthlyPayment ?? estimate.monthlyPayment;
+  const upfrontCosts = snapshot.closingFees ?? estimate.upfrontCosts;
+  const lenderFees = snapshot.lenderFees ?? estimate.lenderFees;
+  const thirdPartyFees = snapshot.thirdPartyFees ?? Math.max(0, upfrontCosts - lenderFees);
+  const points = snapshot.points ?? estimate.points;
+  const estimatedFields = [
+    snapshot.interestRate ? null : "interest rate",
+    snapshot.apr ? null : "APR",
+    snapshot.monthlyPayment ? null : "payment",
+    snapshot.closingFees ? null : "fees",
+  ].filter(Boolean) as string[];
+
+  return {
+    ...estimate,
+    apr,
+    eightYearCost: Math.round(monthlyPayment * 96 + upfrontCosts),
+    interestRate,
+    lenderFees,
+    loanProduct: snapshot.loanProduct,
+    monthlyPayment,
+    points,
+    source: "scraped",
+    sourceKind: snapshot.sourceKind,
+    sourceUrl: snapshot.sourceUrl,
+    termLabel: snapshot.loanProduct ?? estimate.termLabel,
+    thirdPartyFees,
+    upfrontCosts,
+    asOf: snapshot.asOf ?? snapshot.scrapedAt,
+    confidence: snapshot.confidence,
+    estimatedFields,
+  };
+}
+
 export function getEstimatedLoanAmount(context: RateEstimateContext = {}) {
   const purchasePrice = parseNumber(context.purchasePrice) || 400000;
   const downPayment = parseNumber(context.downPaymentAmount);
@@ -61,6 +117,12 @@ function getInterestRate(program: LenderProgram, context: RateEstimateContext) {
     case "5-1arm":
       rate -= 0.24;
       break;
+    case "7-1arm":
+      rate -= 0.18;
+      break;
+    case "10-1arm":
+      rate -= 0.08;
+      break;
   }
 
   if (context.loanPurpose === "refinance") rate += 0.08;
@@ -84,6 +146,8 @@ function getLoanTermLabel(term?: string | null) {
   if (term === "20yr") return "20 year fixed";
   if (term === "15yr") return "15 year fixed";
   if (term === "5-1arm") return "5 year ARM";
+  if (term === "7-1arm") return "7/1 ARM";
+  if (term === "10-1arm") return "10/1 ARM";
   return "30 year fixed";
 }
 

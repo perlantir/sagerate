@@ -18,8 +18,8 @@ export function extractRateOutcomeFromText(text: string, source: RateSourceRecor
     };
   }
 
-  const quote = buildBestQuote(normalized, source);
-  if (!quote) {
+  const quotes = dedupeQuotes([...buildSentenceRateQuotes(normalized, source), ...buildStructuredQuotes(normalized, source), buildBestQuote(normalized, source)].filter(Boolean) as ExtractedRateQuote[]);
+  if (!quotes.length) {
     return {
       status: "no_rate_found",
       quotes: [],
@@ -30,8 +30,8 @@ export function extractRateOutcomeFromText(text: string, source: RateSourceRecor
 
   return {
     status: "success",
-    quotes: [quote],
-    rawText: quote.rawText,
+    quotes,
+    rawText: quotes[0].rawText,
   };
 }
 
@@ -56,7 +56,8 @@ function buildBestQuote(text: string, source: RateSourceRecord): ExtractedRateQu
       return { value, index, context, lowerContext: context.toLowerCase() };
     })
     .filter((match) => match.value >= 2 && match.value <= 15)
-    .filter((match) => RATE_KEYWORDS.some((keyword) => match.lowerContext.includes(keyword)));
+    .filter((match) => RATE_KEYWORDS.some((keyword) => match.lowerContext.includes(keyword)))
+    .filter((match) => isActualRateContext(match.context));
 
   if (!percentageMatches.length) return null;
 
@@ -96,8 +97,134 @@ function buildBestQuote(text: string, source: RateSourceRecord): ExtractedRateQu
     metadata: {
       matchedPercentages: percentageMatches.slice(0, 10).map((match) => match.value),
       extractionVersion: 1,
+      sourceKind: getSourceKind(source),
+      asOf: extractAsOf(rawText),
     },
   };
+}
+
+function buildSentenceRateQuotes(text: string, source: RateSourceRecord): ExtractedRateQuote[] {
+  const patterns = [
+    /(\d{1,2}(?:\.\d{1,3})?)\s*%\s+interest\s+rate\s+with\s+(?:an\s+)?(?:associated\s+)?APR\s+(?:of\s+)?(\d{1,2}(?:\.\d{1,3})?)\s*%/gi,
+    /Rate\s+(\d{1,2}(?:\.\d{1,3})?)\s*%\s+with\s+(?:an\s+)?APR\s+of\s+(\d{1,2}(?:\.\d{1,3})?)\s*%/gi,
+    /(\d{1,2}(?:\.\d{1,3})?)\s*%\s+rate\s+(?:and|with)\s+(\d{1,2}(?:\.\d{1,3})?)\s*%\s+APR/gi,
+  ];
+
+  return patterns.flatMap((pattern) =>
+    [...text.matchAll(pattern)].map((match) => {
+      const index = match.index ?? 0;
+      const rawText = expandContext(text, index, 520);
+      const monthlyPayment = extractMoneyAfter(rawText, /(?:payment|payments?)\D{0,80}/i);
+      return {
+        loanProduct: inferLoanProduct(rawText, source),
+        interestRate: Number(match[1]),
+        apr: Number(match[2]),
+        points: extractNumberAfter(rawText, /points?\s*(?:of|:)?\s*/i),
+        monthlyPayment,
+        closingFees: extractMoneyAfter(rawText, /(?:closing|upfront|total)\s+(?:costs?|fees?)\D{0,40}/i),
+        lenderFees: extractMoneyAfter(rawText, /origination\s+fee\D{0,40}/i),
+        thirdPartyFees: null,
+        confidence: 0.96,
+        rawText,
+        metadata: {
+          extractionVersion: 3,
+          sourceKind: getSourceKind(source),
+          expectedLoanProduct: getExpectedLoanProduct(source),
+          asOf: extractAsOf(rawText) ?? extractAsOf(text),
+        },
+      };
+    }),
+  );
+}
+
+function buildStructuredQuotes(text: string, source: RateSourceRecord): ExtractedRateQuote[] {
+  const products = [
+    { label: "30 year fixed", pattern: /30[-\s]?year(?:\s+fixed)?/gi },
+    { label: "20 year fixed", pattern: /20[-\s]?year(?:\s+fixed)?/gi },
+    { label: "15 year fixed", pattern: /15[-\s]?year(?:\s+fixed)?/gi },
+    { label: "10 year fixed", pattern: /10[-\s]?year(?:\s+fixed)?/gi },
+    { label: "5/1 ARM", pattern: /5\/1\s+arm|5[-\s]?year\s+arm/gi },
+    { label: "7/1 ARM", pattern: /7\/1\s+arm|7[-\s]?year\s+arm/gi },
+    { label: "10/1 ARM", pattern: /10\/1\s+arm|10[-\s]?year\s+arm/gi },
+    { label: "Medical Professional", pattern: /medical\s+professional/gi },
+    { label: "Physician loan", pattern: /physician\s+loan|physician\s+mortgage/gi },
+    { label: "Professional Mortgage", pattern: /professional\s+mortgage|professional\s+loan/gi },
+  ];
+
+  const productHits = products.flatMap((product) => {
+    return [...text.matchAll(product.pattern)].map((match) => ({
+      label: product.label,
+      index: match.index ?? 0,
+    }));
+  }).sort((a, b) => a.index - b.index);
+
+  const quotes: ExtractedRateQuote[] = [];
+  for (let index = 0; index < productHits.length; index += 1) {
+    const hit = productHits[index];
+    const nextHit = productHits[index + 1];
+    const segment = text.slice(hit.index, Math.min(text.length, nextHit ? nextHit.index : hit.index + 700));
+    const percentMatches = [...segment.matchAll(/(?<!\d)(\d{1,2}(?:\.\d{1,3})?)\s*%/g)]
+      .map((match) => ({
+        value: Number(match[1]),
+        index: match.index ?? 0,
+        context: segment.slice(Math.max(0, (match.index ?? 0) - 80), Math.min(segment.length, (match.index ?? 0) + 120)),
+      }))
+      .filter((match) => match.value >= 2 && match.value <= 15);
+
+    if (!percentMatches.length) continue;
+
+    const aprMatch = percentMatches.find((match) => /\bapr\b/i.test(match.context) && isActualRateContext(match.context)) ?? null;
+    const rateMatch = percentMatches.find((match) => !/\bapr\b/i.test(match.context) && isActualRateContext(match.context)) ?? null;
+    if (!rateMatch && !aprMatch) continue;
+
+    const paymentSegment = aprMatch ? segment.slice(aprMatch.index) : segment;
+    const monthlyPayment = extractFirstMoney(paymentSegment);
+    const closingFees = extractMoneyAfter(segment, /(?:closing|upfront|total)\s+(?:costs?|fees?)\D{0,40}/i);
+    const points = extractNumberAfter(segment, /points?\s*(?:of|:)?\s*/i);
+    const rawText = segment.slice(0, 900).trim();
+    const confidence =
+      0.5 +
+      (rateMatch ? 0.14 : 0) +
+      (aprMatch ? 0.14 : 0) +
+      (monthlyPayment ? 0.08 : 0) +
+      (/\brate\b|\bapr\b/i.test(segment) ? 0.08 : 0) +
+      (/\bdoctor\b|\bphysician\b|\bprofessional\b|\bmedical\b/i.test(segment) ? 0.06 : 0);
+
+    quotes.push({
+      loanProduct: hit.label,
+      interestRate: rateMatch?.value ?? null,
+      apr: aprMatch?.value ?? inferApr(rateMatch?.value ?? null, segment),
+      points,
+      monthlyPayment,
+      closingFees,
+      lenderFees: null,
+      thirdPartyFees: null,
+      confidence: Math.min(0.97, Number(confidence.toFixed(2))),
+      rawText,
+      metadata: {
+        extractionVersion: 2,
+        sourceKind: getSourceKind(source),
+        expectedLoanProduct: getExpectedLoanProduct(source),
+        asOf: extractAsOf(segment) ?? extractAsOf(text),
+      },
+    });
+  }
+
+  return quotes;
+}
+
+function dedupeQuotes(quotes: ExtractedRateQuote[]) {
+  const seen = new Set<string>();
+  return quotes
+    .filter((quote) => quote.interestRate || quote.apr)
+    .sort((a, b) => b.confidence - a.confidence)
+    .filter((quote) => {
+      const key = `${quote.loanProduct ?? ""}:${quote.interestRate ?? ""}:${quote.apr ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 6);
 }
 
 function scorePercentCandidates<T extends { context: string; lowerContext: string; value: number }>(candidates: T[]) {
@@ -112,6 +239,23 @@ function scorePercentCandidates<T extends { context: string; lowerContext: strin
       return { ...candidate, score };
     })
     .sort((a, b) => b.score - a.score);
+}
+
+function isActualRateContext(context: string) {
+  const lower = context.toLowerCase();
+  const hasRateSignal =
+    /\bapr\b/.test(lower) ||
+    /\binterest\s+rate\b/.test(lower) ||
+    /\brate\s+(?:with|and|is|of|for|information|quote|quotes|table|as\s+of)\b/.test(lower) ||
+    /\bcurrent\s+(?:mortgage\s+)?rates?\b/.test(lower);
+  const hasFalsePositiveSignal =
+    /\bdown\s+payment\b/.test(lower) ||
+    /\bfinancing\b/.test(lower) ||
+    /\bcredit\s+cards?\b/.test(lower) ||
+    /\bcash\s+back\b/.test(lower) ||
+    /\bannual\s+fee\b/.test(lower) ||
+    /\bclosing\s+cost\s+discount\b/.test(lower);
+  return hasRateSignal && !hasFalsePositiveSignal;
 }
 
 function inferApr(rate: number | null, rawText: string) {
@@ -145,6 +289,11 @@ function extractMoneyAfter(text: string, label: RegExp) {
   return match ? Number(match[1].replace(/,/g, "")) : null;
 }
 
+function extractFirstMoney(text: string) {
+  const match = text.match(/\$\s*([\d,]+)(?:\.\d{2})?/);
+  return match ? Number(match[1].replace(/,/g, "")) : null;
+}
+
 function expandContext(text: string, index: number, radius: number) {
   return text.slice(Math.max(0, index - radius), Math.min(text.length, index + radius)).trim();
 }
@@ -166,4 +315,19 @@ function decodeHtmlEntities(value: string) {
     .replace(/&#39;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">");
+}
+
+function getSourceKind(source: RateSourceRecord) {
+  const value = source.selectorHints?.sourceKind;
+  return typeof value === "string" ? value : null;
+}
+
+function getExpectedLoanProduct(source: RateSourceRecord) {
+  const value = source.selectorHints?.expectedLoanProduct;
+  return typeof value === "string" ? value : null;
+}
+
+function extractAsOf(text: string) {
+  const match = text.match(/\bas\s+of\s+([A-Za-z]+\s+\d{1,2},\s+\d{4}(?:\s+\d{1,2}:\d{2}\s*(?:AM|PM)?\s*(?:UTC|ET|CT|PT)?)?)/i);
+  return match?.[1] ?? null;
 }

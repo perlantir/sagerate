@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { mortgageRateScrapeRuns, mortgageRateSnapshots, mortgageRateSources } from "@/lib/db/schema";
 import { getConfiguredRateSources } from "@/lib/rates/sources";
 import type { ExtractedRateQuote, RateScrapeMethod, RateScrapeStatus, RateScrapeTrigger, RateSourceRecord, RateSourceSeed } from "@/lib/rates/types";
+import type { ComparableRateSnapshot } from "@/lib/types";
 
 export async function ensureDefaultRateSources() {
   const db = getDb();
@@ -12,8 +13,36 @@ export async function ensureDefaultRateSources() {
   }
 
   const existing = await db.select().from(mortgageRateSources);
-  const existingKeys = new Set(existing.map((source) => sourceKey(source.programSlug, source.sourceUrl)));
-  const missing = seeds.filter((seed) => !existingKeys.has(sourceKey(seed.programSlug, seed.sourceUrl)));
+  const existingProgramSlugs = new Set(existing.map((source) => source.programSlug));
+  const missing = seeds.filter((seed) => !existingProgramSlugs.has(seed.programSlug));
+  const existingByProgramSlug = new Map(existing.map((source) => [source.programSlug, source]));
+
+  for (const seed of seeds) {
+    const existingSource = existingByProgramSlug.get(seed.programSlug);
+    if (!existingSource) continue;
+    if (
+      existingSource.sourceUrl !== seed.sourceUrl ||
+      existingSource.scrapeMethod !== seed.scrapeMethod ||
+      JSON.stringify(existingSource.selectorHints ?? {}) !== JSON.stringify(seed.selectorHints ?? {}) ||
+      existingSource.notes !== (seed.notes ?? null)
+    ) {
+      await db
+        .update(mortgageRateSources)
+        .set({
+          updatedAt: new Date(),
+          lenderName: seed.lenderName,
+          programName: seed.programName ?? null,
+          programType: seed.programType,
+          sourceUrl: seed.sourceUrl,
+          scrapeMethod: seed.scrapeMethod,
+          selectorHints: seed.selectorHints ?? {},
+          notes: seed.notes ?? null,
+          isActive: true,
+        })
+        .where(eq(mortgageRateSources.programSlug, seed.programSlug));
+    }
+  }
+
   if (missing.length) {
     await db.insert(mortgageRateSources).values(
       missing.map((seed) => ({
@@ -162,10 +191,61 @@ export async function listLatestRateSnapshots(limit = 100) {
   return db.select().from(mortgageRateSnapshots).orderBy(desc(mortgageRateSnapshots.scrapedAt)).limit(limit);
 }
 
-function sourceKey(programSlug: string, sourceUrl: string) {
-  return `${programSlug}::${sourceUrl}`;
+export async function listLatestComparableRateSnapshots(limit = 300): Promise<Record<string, ComparableRateSnapshot[]>> {
+  const db = getDb();
+  if (!db) return {};
+  const [latestRun] = await db.select().from(mortgageRateScrapeRuns).orderBy(desc(mortgageRateScrapeRuns.createdAt)).limit(1);
+  const rows = latestRun
+    ? await db.select().from(mortgageRateSnapshots).where(eq(mortgageRateSnapshots.runId, latestRun.id)).orderBy(desc(mortgageRateSnapshots.scrapedAt)).limit(limit)
+    : await db.select().from(mortgageRateSnapshots).orderBy(desc(mortgageRateSnapshots.scrapedAt)).limit(limit);
+  const latest: Record<string, ComparableRateSnapshot[]> = {};
+  const seen = new Set<string>();
+
+  const rowsByConfidence = [...rows].sort((a, b) => (toNumber(b.confidence) ?? 0) - (toNumber(a.confidence) ?? 0));
+
+  for (const row of rowsByConfidence) {
+    if (row.status !== "success") continue;
+    if (!row.interestRate || !row.apr) continue;
+    const metadata = row.metadata ?? {};
+    const sourceKind = typeof metadata.sourceKind === "string" ? metadata.sourceKind : null;
+    if (sourceKind !== "professional_program" && sourceKind !== "doctor_program") continue;
+
+    const key = `${row.programSlug}:${row.loanProduct ?? "program"}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    latest[row.programSlug] ??= [];
+    latest[row.programSlug].push({
+      id: row.id,
+      programSlug: row.programSlug,
+      lenderName: row.lenderName,
+      programName: row.programName,
+      programType: row.programType,
+      sourceUrl: row.sourceUrl,
+      loanProduct: row.loanProduct,
+      interestRate: toNumber(row.interestRate),
+      apr: toNumber(row.apr),
+      points: toNumber(row.points),
+      monthlyPayment: row.monthlyPayment,
+      closingFees: row.closingFees,
+      lenderFees: row.lenderFees,
+      thirdPartyFees: row.thirdPartyFees,
+      scrapedAt: row.scrapedAt.toISOString(),
+      confidence: toNumber(row.confidence),
+      sourceKind,
+      asOf: typeof metadata.asOf === "string" ? metadata.asOf : null,
+    });
+  }
+
+  return latest;
 }
 
 function toNumeric(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? String(value) : null;
+}
+
+function toNumber(value: string | number | null | undefined) {
+  if (typeof value === "number") return value;
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }

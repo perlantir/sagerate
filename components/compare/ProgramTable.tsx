@@ -5,9 +5,9 @@ import { ProgramFilters } from "@/components/compare/ProgramFilters";
 import { ProgramMobileCard, ProgramRow } from "@/components/compare/ProgramRow";
 import { QuickCaptureModal } from "@/components/compare/QuickCaptureModal";
 import { TableEmptyState } from "@/components/compare/TableEmptyState";
-import type { LenderProgram } from "@/lib/types";
+import type { ComparableRateSnapshot, LenderProgram } from "@/lib/types";
 import { filterPrograms } from "@/lib/services/programs";
-import { estimateProgramRate, getEstimatedLoanAmount, type RateEstimateContext } from "@/lib/utils/rateEstimates";
+import { getEstimatedLoanAmount, resolveProgramRateQuote, type RateEstimateContext } from "@/lib/utils/rateEstimates";
 import { formatCurrency } from "@/lib/utils/formatting";
 
 export type ProgramFiltersState = {
@@ -20,7 +20,7 @@ export type ProgramFiltersState = {
   downPaymentAmount: string;
   creditScore: string;
   loanPurpose: string;
-  loanTerm: string;
+  loanTerms: string[];
   downPayment: string;
 };
 
@@ -34,13 +34,29 @@ const defaultFilters: ProgramFiltersState = {
   downPaymentAmount: "80000",
   creditScore: "780",
   loanPurpose: "purchase",
-  loanTerm: "30yr",
+  loanTerms: ["30yr"],
   downPayment: "20",
 };
 
 type SortKey = "relevance" | "rate" | "apr" | "payment" | "fees";
+const loanTermLabels: Record<string, string> = {
+  "30yr": "30 yr fixed",
+  "20yr": "20 yr fixed",
+  "15yr": "15 yr fixed",
+  "5-1arm": "5 yr ARM",
+  "7-1arm": "7 yr ARM",
+  "10-1arm": "10 yr ARM",
+};
 
-export function ProgramTable({ programs, initialFilters = {} }: { programs: LenderProgram[]; initialFilters?: Partial<ProgramFiltersState> }) {
+export function ProgramTable({
+  programs,
+  rateSnapshotsByProgram = {},
+  initialFilters = {},
+}: {
+  programs: LenderProgram[];
+  rateSnapshotsByProgram?: Record<string, ComparableRateSnapshot[]>;
+  initialFilters?: Partial<ProgramFiltersState>;
+}) {
   const [filters, setFilters] = useState<ProgramFiltersState>({ ...defaultFilters, ...initialFilters });
   const [sortKey, setSortKey] = useState<SortKey>("relevance");
   const [activeProgram, setActiveProgram] = useState<LenderProgram | null>(null);
@@ -49,28 +65,38 @@ export function ProgramTable({ programs, initialFilters = {} }: { programs: Lend
       purchasePrice: filters.purchasePrice,
       downPaymentAmount: filters.downPaymentAmount,
       loanPurpose: filters.loanPurpose,
-      loanTerm: filters.loanTerm,
+      loanTerm: filters.loanTerms[0] ?? "30yr",
       creditScore: filters.creditScore,
     }),
-    [filters.creditScore, filters.downPaymentAmount, filters.loanPurpose, filters.loanTerm, filters.purchasePrice],
+    [filters.creditScore, filters.downPaymentAmount, filters.loanPurpose, filters.loanTerms, filters.purchasePrice],
   );
 
   const filtered = useMemo(() => {
     const loanAmount = getEstimatedLoanAmount(estimateContext);
-    const result = filterPrograms(programs, {
+    const programsWithComparableRates = programs.filter((program) => Boolean(rateSnapshotsByProgram[program.id]?.length));
+    const matchedPrograms = filterPrograms(programsWithComparableRates, {
       ...filters,
       loanAmount,
-    }).sort((a, b) => {
-      const aEstimate = estimateProgramRate(a, estimateContext);
-      const bEstimate = estimateProgramRate(b, estimateContext);
-      if (sortKey === "rate") return aEstimate.interestRate - bEstimate.interestRate;
-      if (sortKey === "apr") return aEstimate.apr - bEstimate.apr;
-      if (sortKey === "payment") return aEstimate.monthlyPayment - bEstimate.monthlyPayment;
-      if (sortKey === "fees") return aEstimate.upfrontCosts - bEstimate.upfrontCosts;
-      return a.displayOrder - b.displayOrder || a.lenderName.localeCompare(b.lenderName);
     });
+    const result = matchedPrograms
+      .flatMap((program) =>
+        (rateSnapshotsByProgram[program.id] ?? [])
+          .filter((snapshot) => matchesSelectedTerms(snapshot, filters.loanTerms))
+          .map((snapshot) => ({ program, snapshot })),
+      )
+      .sort((a, b) => {
+        const aQuote = resolveProgramRateQuote(a.program, getContextForSnapshot(estimateContext, a.snapshot, filters.loanTerms), a.snapshot);
+        const bQuote = resolveProgramRateQuote(b.program, getContextForSnapshot(estimateContext, b.snapshot, filters.loanTerms), b.snapshot);
+        if (sortKey === "rate") return aQuote.interestRate - bQuote.interestRate;
+        if (sortKey === "apr") return aQuote.apr - bQuote.apr;
+        if (sortKey === "payment") return aQuote.monthlyPayment - bQuote.monthlyPayment;
+        if (sortKey === "fees") return aQuote.upfrontCosts - bQuote.upfrontCosts;
+        return a.program.displayOrder - b.program.displayOrder || a.program.lenderName.localeCompare(b.program.lenderName);
+      });
     return result;
-  }, [estimateContext, filters, programs, sortKey]);
+  }, [estimateContext, filters, programs, rateSnapshotsByProgram, sortKey]);
+
+  const comparableRateCount = Object.values(rateSnapshotsByProgram).reduce((total, snapshots) => total + snapshots.length, 0);
 
   return (
     <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
@@ -81,7 +107,10 @@ export function ProgramTable({ programs, initialFilters = {} }: { programs: Lend
             <p>
               <span className="font-bold text-navy">Showing results for:</span>{" "}
               {filters.loanPurpose === "purchase" ? "Purchase" : "Refinance"} rate options in {filters.zipCode || "your area"} with a{" "}
-              {formatCurrency(getEstimatedLoanAmount(estimateContext))} estimated loan amount.
+              {formatCurrency(getEstimatedLoanAmount(estimateContext))} estimated loan amount and {formatSelectedLoanTerms(filters.loanTerms)}.
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              Showing only lenders with scraped professional or physician/doctor program rates. {comparableRateCount} lender source{comparableRateCount === 1 ? "" : "s"} available.
             </p>
             <button type="button" className="mt-1 text-xs font-bold text-gold">
               Key terms explained
@@ -104,10 +133,10 @@ export function ProgramTable({ programs, initialFilters = {} }: { programs: Lend
           </label>
         </div>
 
-        <div className="mb-3 text-sm font-semibold text-slate-600">{filtered.length} matching lender programs</div>
-        {filtered.length === 0 ? <TableEmptyState /> : null}
+        <div className="mb-3 text-sm font-semibold text-slate-600">{filtered.length} matching rate option{filtered.length === 1 ? "" : "s"}</div>
+        {filtered.length === 0 ? <TableEmptyState reason={comparableRateCount === 0 ? "rates" : "filters"} /> : null}
 
-        <div className="hidden overflow-hidden border-y border-slate-200 bg-white lg:block">
+        {filtered.length > 0 ? <div className="hidden overflow-hidden border-y border-slate-200 bg-white lg:block">
           <div className="table-scroll overflow-x-auto">
             <table data-testid="rate-table" className="w-full min-w-[980px] border-collapse text-left">
               <thead className="border-b border-slate-300 bg-white text-xs font-bold text-slate-600">
@@ -117,23 +146,35 @@ export function ProgramTable({ programs, initialFilters = {} }: { programs: Lend
                   <SortableHeader label="APR" onClick={() => setSortKey("apr")} />
                   <SortableHeader label="Mo. payment" onClick={() => setSortKey("payment")} />
                   <SortableHeader label="Closing fees" onClick={() => setSortKey("fees")} />
-                  <th className="px-4 py-3 text-right">as of Jun 9, 2026</th>
+                  <th className="px-4 py-3 text-right">Source</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((program) => (
-                  <ProgramRow key={program.id} program={program} estimateContext={estimateContext} onQualify={setActiveProgram} />
+                {filtered.map(({ program, snapshot }) => (
+                  <ProgramRow
+                    key={`${program.id}-${snapshot.id}`}
+                    program={program}
+                    estimateContext={getContextForSnapshot(estimateContext, snapshot, filters.loanTerms)}
+                    rateSnapshot={snapshot}
+                    onQualify={setActiveProgram}
+                  />
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </div> : null}
 
-        <div className="grid gap-4 lg:hidden">
-          {filtered.map((program) => (
-            <ProgramMobileCard key={program.id} program={program} estimateContext={estimateContext} onQualify={setActiveProgram} />
+        {filtered.length > 0 ? <div className="grid gap-4 lg:hidden">
+          {filtered.map(({ program, snapshot }) => (
+            <ProgramMobileCard
+              key={`${program.id}-${snapshot.id}`}
+              program={program}
+              estimateContext={getContextForSnapshot(estimateContext, snapshot, filters.loanTerms)}
+              rateSnapshot={snapshot}
+              onQualify={setActiveProgram}
+            />
           ))}
-        </div>
+        </div> : null}
       </section>
 
       <QuickCaptureModal
@@ -144,6 +185,45 @@ export function ProgramTable({ programs, initialFilters = {} }: { programs: Lend
       />
     </div>
   );
+}
+
+function getContextForSnapshot(context: RateEstimateContext, snapshot: ComparableRateSnapshot, selectedTerms: string[]): RateEstimateContext {
+  return {
+    ...context,
+    loanTerm: getTermValueFromLoanProduct(snapshot.loanProduct) ?? selectedTerms[0] ?? context.loanTerm,
+  };
+}
+
+function matchesSelectedTerms(snapshot: ComparableRateSnapshot, selectedTerms: string[]) {
+  const term = getTermValueFromLoanProduct(snapshot.loanProduct);
+  if (!term) return true;
+  return selectedTerms.includes(term);
+}
+
+function getTermValueFromLoanProduct(loanProduct?: string | null) {
+  const normalized = loanProduct?.toLowerCase() ?? "";
+  if (matchesArmTerm(normalized, 10)) return "10-1arm";
+  if (matchesArmTerm(normalized, 7)) return "7-1arm";
+  if (matchesArmTerm(normalized, 5)) return "5-1arm";
+  if (matchesFixedTerm(normalized, 30)) return "30yr";
+  if (matchesFixedTerm(normalized, 20)) return "20yr";
+  if (matchesFixedTerm(normalized, 15)) return "15yr";
+  return null;
+}
+
+function matchesArmTerm(value: string, years: number) {
+  return new RegExp(`\\b${years}\\s*(?:/|-)?(?:1|6)?\\s*arm\\b`).test(value) || new RegExp(`\\b${years}\\s*(?:year|yr)\\s*arm\\b`).test(value);
+}
+
+function matchesFixedTerm(value: string, years: number) {
+  return new RegExp(`\\b${years}\\s*(?:-|\\s)?(?:year|yr)\\s*(?:fixed|fixed-rate)?\\b`).test(value);
+}
+
+function formatSelectedLoanTerms(values: string[]) {
+  const labels = values.map((value) => loanTermLabels[value] ?? value);
+  if (labels.length <= 1) return labels[0] ?? "selected loan terms";
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
 }
 
 function SortableHeader({ label, onClick }: { label: string; onClick: () => void }) {

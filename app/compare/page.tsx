@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Heart, Landmark, UserCircle } from "lucide-react";
 import { ProgramTable } from "@/components/compare/ProgramTable";
 import { listPrograms } from "@/lib/services/programs";
+import { listLatestComparableRateSnapshots } from "@/lib/services/rateScrapes";
 
 export const metadata: Metadata = {
   title: "Compare Professional Mortgage Rates",
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function ComparePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
-  const programs = await listPrograms();
+  const [programs, rateSnapshotsByProgram] = await Promise.all([listPrograms(), listLatestComparableRateSnapshots()]);
   return (
     <main className="min-h-screen bg-surface">
       <div className="border-b border-navy/80 bg-navy text-white">
@@ -36,6 +37,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
       <div className="mx-auto max-w-[1450px] p-4">
         <ProgramTable
           programs={programs}
+          rateSnapshotsByProgram={rateSnapshotsByProgram}
           initialFilters={{
             programType: typeof params.programType === "string" ? params.programType : undefined,
             degree: typeof params.degree === "string" ? params.degree : undefined,

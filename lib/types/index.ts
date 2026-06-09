@@ -116,6 +116,27 @@ export type MortgageRateSnapshot = {
   metadata?: Record<string, unknown> | null;
 };
 
+export type ComparableRateSnapshot = {
+  id: string;
+  programSlug: string;
+  lenderName: string;
+  programName?: string | null;
+  programType: LoanProgramType;
+  sourceUrl: string;
+  loanProduct?: string | null;
+  interestRate?: number | null;
+  apr?: number | null;
+  points?: number | null;
+  monthlyPayment?: number | null;
+  closingFees?: number | null;
+  lenderFees?: number | null;
+  thirdPartyFees?: number | null;
+  scrapedAt: string;
+  confidence?: number | null;
+  sourceKind?: string | null;
+  asOf?: string | null;
+};
+
 export type LeadRecord = {
   id: string;
   createdAt: string;

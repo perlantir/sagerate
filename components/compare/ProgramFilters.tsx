@@ -14,6 +14,8 @@ const loanTerms = [
   ["20yr", "20 yr fixed"],
   ["15yr", "15 yr fixed"],
   ["5-1arm", "5 yr ARM"],
+  ["7-1arm", "7 yr ARM"],
+  ["10-1arm", "10 yr ARM"],
 ] as const;
 
 export function ProgramFilters({
@@ -130,8 +132,8 @@ export function ProgramFilters({
               <label key={value} className="flex items-center gap-3 text-sm font-semibold text-slate-700">
                 <input
                   type="checkbox"
-                  checked={filters.loanTerm === value}
-                  onChange={() => onChange({ ...filters, loanTerm: value })}
+                  checked={filters.loanTerms.includes(value)}
+                  onChange={() => onChange({ ...filters, loanTerms: toggleLoanTerm(filters.loanTerms, value) })}
                   className="h-4 w-4 accent-gold"
                 />
                 {label}
@@ -215,4 +217,11 @@ function cleanMoney(value: string) {
 function formatMoneyInput(value: string) {
   const number = Number(cleanMoney(value));
   return number ? new Intl.NumberFormat("en-US").format(number) : "";
+}
+
+function toggleLoanTerm(current: string[], value: string) {
+  if (current.includes(value)) {
+    return current.length === 1 ? current : current.filter((term) => term !== value);
+  }
+  return [...current, value];
 }
