@@ -1,7 +1,10 @@
-import "dotenv/config";
-import { getDb } from "@/lib/db";
+import { config } from "dotenv";
+import { closeDb, getDb } from "@/lib/db";
 import { lenderPrograms } from "@/lib/db/schema";
 import { LENDER_PROGRAMS } from "@/lib/constants/programs";
+
+config({ path: ".env.local" });
+config();
 
 async function main() {
   const db = getDb();
@@ -43,7 +46,11 @@ async function main() {
   console.log("Create the default admin user in Supabase Auth using ADMIN_EMAIL and ADMIN_PASSWORD from your environment.");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await closeDb();
+  });
